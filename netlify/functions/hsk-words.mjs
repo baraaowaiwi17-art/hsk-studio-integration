@@ -28,17 +28,25 @@ export const handler = async (event) => {
     return reply(405, { error: 'Method not allowed' });
   }
 
-  const expected = process.env.HSK_API_KEY;
-  const auth =
-    event.headers?.authorization ||
-    event.headers?.Authorization ||
-    '';
+  
+  if (event.httpMethod === 'POST') {
+    const expected = process.env.HSK_API_KEY;
+    const auth =
+      event.headers?.authorization ||
+      event.headers?.Authorization ||
+      '';
 
-  if (!expected) {
-    return reply(503, {
-      error: 'Server is not configured. Set HSK_API_KEY in Netlify.'
-    });
+    if (!expected) {
+      return reply(503, {
+        error: 'Server is not configured. Set HSK_API_KEY in Netlify.'
+      });
+    }
+
+    if (auth !== `Bearer ${expected}`) {
+      return reply(401, { error: 'Unauthorized' });
+    }
   }
+
 
   if (auth !== `Bearer ${expected}`) {
     return reply(401, { error: 'Unauthorized' });

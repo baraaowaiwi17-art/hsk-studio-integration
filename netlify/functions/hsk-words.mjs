@@ -41,15 +41,12 @@ export const handler = async (event) => {
       });
     }
 
-    if (auth !== `Bearer ${expected}`) {
-      return reply(401, { error: 'Unauthorized' });
-    }
-  }
+try {
+  const store = getStore('hsk-studio-vocabulary');
 
 
-  if (auth !== `Bearer ${expected}`) {
-    return reply(401, { error: 'Unauthorized' });
-  }
+  try {
+  const store = getStore('hsk-studio-vocabulary');
 
   try {
     const store = getStore('hsk-studio-vocabulary');

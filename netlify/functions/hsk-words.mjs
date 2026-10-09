@@ -28,13 +28,10 @@ export const handler = async (event) => {
     };
   }
 
-  if (method !== 'GET' && method !== 'POST') {
-    return reply(405, {
-      error: 'Method not allowed'
-    });
+  if (!['GET', 'POST'].includes(method)) {
+    return reply(405, { error: 'Method not allowed' });
   }
 
-  // GET reads vocabulary. POST requires the secret key.
   if (method === 'POST') {
     const expected = process.env.HSK_API_KEY;
     const auth =
@@ -44,14 +41,12 @@ export const handler = async (event) => {
 
     if (!expected) {
       return reply(503, {
-        error: 'Server is not configured. Set HSK_API_KEY in Netlify.'
+        error: 'HSK_API_KEY is missing in Netlify.'
       });
     }
 
     if (auth !== `Bearer ${expected}`) {
-      return reply(401, {
-        error: 'Unauthorized'
-      });
+      return reply(401, { error: 'Unauthorized' });
     }
   }
 
@@ -61,9 +56,7 @@ export const handler = async (event) => {
       (await store.get('words', { type: 'json' })) || [];
 
     if (method === 'GET') {
-      return reply(200, {
-        words: current
-      });
+      return reply(200, { words: current });
     }
 
     let payload;
@@ -71,9 +64,7 @@ export const handler = async (event) => {
     try {
       payload = JSON.parse(event.body || '{}');
     } catch {
-      return reply(400, {
-        error: 'Invalid JSON body.'
-      });
+      return reply(400, { error: 'Invalid JSON body.' });
     }
 
     if (
@@ -93,21 +84,13 @@ export const handler = async (event) => {
         typeof word.hanzi !== 'string' ||
         !word.hanzi.trim()
       ) {
-        throw new Error(
-          'Every word needs a non-empty hanzi field.'
-        );
+        throw new Error('Every word needs a non-empty hanzi field.');
       }
 
       const lesson = Number(word.lesson || 1);
 
-      if (
-        !Number.isInteger(lesson) ||
-        lesson < 1 ||
-        lesson > 10
-      ) {
-        throw new Error(
-          'Lesson must be a number from 1 to 10.'
-        );
+      if (!Number.isInteger(lesson) || lesson < 1 || lesson > 10) {
+        throw new Error('Lesson must be a number from 1 to 10.');
       }
 
       const result = {
@@ -145,10 +128,7 @@ export const handler = async (event) => {
       );
 
       if (index >= 0) {
-        current[index] = {
-          ...current[index],
-          ...word
-        };
+        current[index] = { ...current[index], ...word };
         updated++;
       } else {
         current.push(word);
@@ -169,7 +149,7 @@ export const handler = async (event) => {
     console.error('HSK vocabulary function error:', error);
 
     return reply(500, {
-      error: 'The server could not process the request.'
+      error: error?.message || 'Unknown server error.'
     });
   }
 };

@@ -27,7 +27,6 @@ export const handler = async (event) => {
   if (!['GET', 'POST'].includes(event.httpMethod)) {
     return reply(405, { error: 'Method not allowed' });
   }
-
   
   if (event.httpMethod === 'POST') {
     const expected = process.env.HSK_API_KEY;

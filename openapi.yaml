@@ -1,0 +1,79 @@
+openapi: 3.1.0
+info:
+  title: HSK Studio Vocabulary API
+  version: 1.0.0
+  description: Save vocabulary provided by the user's HSK 3.0 study GPT to the HSK Studio shared vocabulary store.
+servers:
+  - url: https://dreamy-centaur-4808be.netlify.app
+paths:
+  /.netlify/functions/hsk-words:
+    get:
+      operationId: getHSKStudioWords
+      summary: Get vocabulary already saved in HSK Studio
+      description: Retrieve the current shared vocabulary list. Use this to avoid duplicates before adding new words.
+      responses:
+        '200':
+          description: Current vocabulary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  words:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Word'
+    post:
+      operationId: addHSKStudioWords
+      summary: Add or update textbook vocabulary in HSK Studio
+      description: Save 1 to 100 words. Only send words verified from the user's textbook or explicitly provided by the user. Lesson must be 1–10. Duplicate Hanzi in the same lesson are updated instead of duplicated.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [words]
+              properties:
+                words:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    $ref: '#/components/schemas/Word'
+      responses:
+        '200':
+          description: Words saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  added: { type: integer }
+                  updated: { type: integer }
+                  total: { type: integer }
+                  message: { type: string }
+        '401': { description: Invalid API key }
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    Word:
+      type: object
+      required: [hanzi, lesson]
+      properties:
+        hanzi: { type: string, description: Chinese word exactly as shown in the verified source }
+        lesson: { type: integer, minimum: 1, maximum: 10 }
+        pinyin: { type: string }
+        arabic: { type: string }
+        english: { type: string }
+        pos: { type: string }
+        example: { type: string }
+        examplePinyin: { type: string }
+        exampleMeaning: { type: string }
+        notes: { type: string }

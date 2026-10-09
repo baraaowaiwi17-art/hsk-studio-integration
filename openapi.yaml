@@ -4,7 +4,7 @@ info:
   version: 1.0.0
   description: Save vocabulary provided by the user's HSK 3.0 study GPT to the HSK Studio shared vocabulary store.
 servers:
-  - url: https://dreamy-centaur-4808be.netlify.app
+  - url: https://wondrous-banoffee-3fa330.netlify.app
 paths:
   /.netlify/functions/hsk-words:
     get:

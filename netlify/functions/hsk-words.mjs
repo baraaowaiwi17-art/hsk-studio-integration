@@ -9,14 +9,18 @@ const headers = {
   'Cache-Control': 'no-store'
 };
 
-const reply = (statusCode, body) => ({
-  statusCode,
-  headers,
-  body: JSON.stringify(body)
-});
+function reply(statusCode, body) {
+  return {
+    statusCode,
+    headers,
+    body: JSON.stringify(body)
+  };
+}
 
 export const handler = async (event) => {
-  if (event.httpMethod === 'OPTIONS') {
+  const method = event.httpMethod;
+
+  if (method === 'OPTIONS') {
     return {
       statusCode: 204,
       headers,
@@ -24,11 +28,14 @@ export const handler = async (event) => {
     };
   }
 
-  if (!['GET', 'POST'].includes(event.httpMethod)) {
-    return reply(405, { error: 'Method not allowed' });
+  if (method !== 'GET' && method !== 'POST') {
+    return reply(405, {
+      error: 'Method not allowed'
+    });
   }
-  
-  if (event.httpMethod === 'POST') {
+
+  // GET reads vocabulary. POST requires the secret key.
+  if (method === 'POST') {
     const expected = process.env.HSK_API_KEY;
     const auth =
       event.headers?.authorization ||
@@ -41,21 +48,22 @@ export const handler = async (event) => {
       });
     }
 
-try {
-  const store = getStore('hsk-studio-vocabulary');
-
-
-  try {
-  const store = getStore('hsk-studio-vocabulary');
+    if (auth !== `Bearer ${expected}`) {
+      return reply(401, {
+        error: 'Unauthorized'
+      });
+    }
+  }
 
   try {
     const store = getStore('hsk-studio-vocabulary');
-    const current = (await store.get('words', {
-      type: 'json'
-    })) || [];
+    const current =
+      (await store.get('words', { type: 'json' })) || [];
 
-    if (event.httpMethod === 'GET') {
-      return reply(200, { words: current });
+    if (method === 'GET') {
+      return reply(200, {
+        words: current
+      });
     }
 
     let payload;
@@ -63,7 +71,9 @@ try {
     try {
       payload = JSON.parse(event.body || '{}');
     } catch {
-      return reply(400, { error: 'Invalid JSON body.' });
+      return reply(400, {
+        error: 'Invalid JSON body.'
+      });
     }
 
     if (
@@ -153,12 +163,13 @@ try {
       added,
       updated,
       total: current.length,
-      message:
-        'Vocabulary saved. Open HSK Studio and sync words.'
+      message: 'Vocabulary saved. Open HSK Studio and sync words.'
     });
   } catch (error) {
-    return reply(400, {
-      error: error?.message || 'Request failed.'
+    console.error('HSK vocabulary function error:', error);
+
+    return reply(500, {
+      error: 'The server could not process the request.'
     });
   }
 };

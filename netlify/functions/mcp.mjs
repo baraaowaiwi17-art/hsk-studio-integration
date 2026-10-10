@@ -68,6 +68,32 @@ const tools = [
       },
       required: ['words']
     }
+  },
+  {
+    name: 'delete_hsk_words',
+    description:
+      'Permanently delete specific words from HSK Studio, matched by exact hanzi and lesson. Use ONLY when the user explicitly asks to delete these exact words. First list the candidate words with get_hsk_words, show them to the user, and wait for the user to confirm. Then call this tool with confirm set to true.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        words: {
+          type: 'array',
+          minItems: 1,
+          maxItems: 100,
+          items: {
+            type: 'object',
+            properties: {
+              hanzi: { type: 'string' },
+              lesson: { type: 'integer', minimum: 1, maximum: 10 }
+            },
+            required: ['hanzi', 'lesson']
+          }
+        },
+        confirm: { type: 'boolean' }
+      },
+      required: ['words', 'confirm']
+    },
+    annotations: { destructiveHint: true }
   }
 ];
 
@@ -158,6 +184,49 @@ async function callTool(store, name, args) {
       );
     }
 
+    if (name === 'delete_hsk_words') {
+      if (!args || args.confirm !== true) {
+        return toolText(
+          'Nothing was deleted. confirm must be true, and only after the user explicitly approved deleting these exact words.',
+          true
+        );
+      }
+      const targets = args.words;
+      if (!Array.isArray(targets) || targets.length < 1 || targets.length > 100) {
+        throw new Error('Send a words array containing 1-100 entries.');
+      }
+      const keys = targets.map((t) => {
+        if (!t || typeof t.hanzi !== 'string' || !t.hanzi.trim()) {
+          throw new Error('Every item needs a non-empty hanzi field.');
+        }
+        const lesson = Number(t.lesson);
+        if (!Number.isInteger(lesson) || lesson < 1 || lesson > 10) {
+          throw new Error('Lesson must be a number from 1 to 10.');
+        }
+        return { hanzi: t.hanzi.trim(), lesson };
+      });
+      const matches = (saved, k) =>
+        saved.hanzi === k.hanzi && Number(saved.lesson) === k.lesson;
+      const remaining = current.filter(
+        (saved) => !keys.some((k) => matches(saved, k))
+      );
+      const removed = current.length - remaining.length;
+      const notFound = keys
+        .filter((k) => !current.some((saved) => matches(saved, k)))
+        .map((k) => k.hanzi + ' (lesson ' + k.lesson + ')');
+      if (removed > 0) {
+        await store.setJSON('words', remaining);
+      }
+      return toolText(
+        JSON.stringify({
+          ok: true,
+          removed,
+          notFound,
+          total: remaining.length
+        })
+      );
+    }
+
     return toolText('Unknown tool: ' + name, true);
   } catch (error) {
     console.error('HSK MCP tool error:', error);
@@ -185,9 +254,9 @@ async function handleRpc(store, msg) {
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'hsk-studio', version: '1.0.0' },
+        serverInfo: { name: 'hsk-studio', version: '1.1.0' },
         instructions:
-          'Saves and reads HSK 3.0 vocabulary for HSK Studio. Check existing words before adding. Only add words verified from the textbook or given by the user.'
+          'Saves and reads HSK 3.0 vocabulary for HSK Studio. Check existing words before adding. Only add words verified from the textbook or given by the user. Never delete words unless the user explicitly approved the exact list.'
       });
     }
     case 'ping':

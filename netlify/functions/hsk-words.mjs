@@ -1,5 +1,4 @@
-
-import { getStore } from '@netlify/blobs';
+import { getStore, connectLambda } from '@netlify/blobs';
 
 const headers = {
   'Access-Control-Allow-Origin': '*',
@@ -18,6 +17,8 @@ function reply(statusCode, body) {
 }
 
 export const handler = async (event) => {
+  connectLambda(event);
+
   const method = event.httpMethod;
 
   if (method === 'OPTIONS') {
